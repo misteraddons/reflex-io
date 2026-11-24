@@ -4,6 +4,7 @@
 #include "menu_bridge_internal.h"
 
 #include "../core/button_remap.h"
+#include "../core/controller_selection_state.h"
 #include "../core/controller_settings_state.h"
 #include "../core/settings_store.h"
 #include "../platform/buzzer.h"
@@ -36,10 +37,18 @@ void renderButtonRemap(bool btnChangeJustPressed, bool btnNavigateJustPressed,
 
   if (btnChangeJustPressed) {
     if (remapMenu.isEditMode()) {
-      uint8_t pressed = remapMenu.getFirstPressedButton();
-      if (pressed != 0xFF) {
-        remapMenu.setDestination(pressed);
+      const bool twinStick = deviceMode == RZORD_DREAMCAST &&
+          selectedControllerFrame().connected &&
+          controllerFrameIsDreamcastTwinStick(selectedControllerFrame());
+      if (twinStick) {
+        remapMenu.select();
         buzzer.playMenuNav();
+      } else {
+        uint8_t pressed = remapMenu.getFirstPressedButton();
+        if (pressed != 0xFF) {
+          remapMenu.setDestination(pressed);
+          buzzer.playMenuNav();
+        }
       }
     } else {
       uint8_t result = remapMenu.select();
@@ -66,10 +75,15 @@ void renderButtonRemap(bool btnChangeJustPressed, bool btnNavigateJustPressed,
   }
 
   if (remapMenu.isEditMode()) {
-    uint8_t pressed = remapMenu.getFirstPressedButton();
-    if (pressed != 0xFF) {
-      remapMenu.setDestination(pressed);
-      buzzer.playMenuNav();
+    const bool twinStick = deviceMode == RZORD_DREAMCAST &&
+        selectedControllerFrame().connected &&
+        controllerFrameIsDreamcastTwinStick(selectedControllerFrame());
+    if (!twinStick) {
+      uint8_t pressed = remapMenu.getFirstPressedButton();
+      if (pressed != 0xFF) {
+        remapMenu.setDestination(pressed);
+        buzzer.playMenuNav();
+      }
     }
   }
 

@@ -33,6 +33,7 @@ constexpr uint32_t kDreamcastCapsAnalog = kDreamcastCapAnalogX | kDreamcastCapAn
 constexpr uint32_t kDreamcastTypeAsciiMissionStick =
   kDreamcastCapsStandardButtons | kDreamcastCapsDualDpad |
   kDreamcastCapsTriggers | kDreamcastCapsAnalog;
+constexpr uint32_t kDreamcastTwinStickCapabilityMask = 0x0000FEFE;
 
 bool dreamcastDeviceHasCapability(const MapleDeviceInfo& info, uint32_t capability) {
   return (info.func_data[0] & capability) != 0;
@@ -62,6 +63,18 @@ bool dreamcastDeviceHasProductToken(const MapleDeviceInfo& info, const char* tok
   return false;
 }
 
+bool dreamcastDeviceHasProductName(const MapleDeviceInfo& info, const char* expected) {
+  if (expected == nullptr) return false;
+  const char* actual = info.product_name;
+  size_t length = strlen(actual);
+  while (length > 0 && actual[length - 1] == ' ') --length;
+  if (length != strlen(expected)) return false;
+  for (size_t i = 0; i < length; ++i) {
+    if (dreamcastUpperAscii(actual[i]) != dreamcastUpperAscii(expected[i])) return false;
+  }
+  return true;
+}
+
 bool dreamcastDeviceIsWheelController(const MapleDeviceInfo& info) {
   return dreamcastDeviceHasCapability(info, kDreamcastCapAnalogX) &&
          !dreamcastDeviceHasCapability(info, kDreamcastCapAnalogY) &&
@@ -75,6 +88,12 @@ bool dreamcastDeviceIsMissionStickController(const MapleDeviceInfo& info) {
     return true;
   }
   return dreamcastDeviceHasCapabilities(info, kDreamcastTypeAsciiMissionStick);
+}
+
+bool dreamcastDeviceIsTwinStickController(const MapleDeviceInfo& info) {
+  return (dreamcastDeviceHasProductName(info, "Twin-Stick") ||
+          dreamcastDeviceHasProductName(info, "Twin Stick")) &&
+         info.func_data[0] == kDreamcastTwinStickCapabilityMask;
 }
 }  // namespace
 
@@ -290,6 +309,10 @@ const char* RZInputDreamcast::getControllerDeviceLabel(const MapleDeviceInfo& in
     if (hasVMU) return "Whl+VMU";
     if (hasRumble) return "Whl+Rmb";
     return "Wheel";
+  }
+
+  if (hasController && dreamcastDeviceIsTwinStickController(info)) {
+    return "Twin-Stick";
   }
 
   if (hasController && dreamcastDeviceIsMissionStickController(info)) {

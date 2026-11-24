@@ -575,6 +575,11 @@ void QuickConfigMenu::buildVisibleItems() {
     #else
     addVisibleItem(QCI_DPAD_BUTTONS);
     #endif
+    if (mode == RZORD_DREAMCAST && isLiveInputSelection() &&
+        selectedControllerFrame().connected &&
+        controllerFrameIsDreamcastTwinStick(selectedControllerFrame())) {
+      addVisibleItem(QCI_DPAD2_MODE);
+    }
   }
   #if ADAPT_POLICY_QUICK_SHOW_SOCD
   if (!contextualRotary) {
@@ -833,8 +838,12 @@ const char* QuickConfigMenu::getItemName(QuickConfigItem item) {
       #if defined(ADAPT_PRIMARY_EGRESS_DB15)
       return "Move";
       #else
-      return "DPad";
+      return temp_input_mode == RZORD_DREAMCAST && isLiveInputSelection() &&
+             selectedControllerFrame().connected &&
+             controllerFrameIsDreamcastTwinStick(selectedControllerFrame())
+          ? "D-Pad 1" : "DPad";
       #endif
+    case QCI_DPAD2_MODE: return "D-Pad 2";
     case QCI_SOCD: return "SOCD";
     case QCI_STICK_INVERT: return "Stick Inv";
     case QCI_RUMBLETECH: return "RumbleTech";
@@ -990,6 +999,14 @@ const char* QuickConfigMenu::getItemValue(QuickConfigItem item) {
       const uint8_t idx = isTempDpadModeAllowed(temp_dpad_mode)
                              ? temp_dpad_mode
                              : DPAD_MODE_DPAD;
+      return dpad_mode_names[idx];
+    }
+    case QCI_DPAD2_MODE: {
+      static const char* const dpad_mode_names[] = {
+        "DPad", "Left Stick", "Right Stick", "Buttons"
+      };
+      const uint8_t idx = temp_dpad2_mode <= DPAD_MODE_BUTTONS
+          ? temp_dpad2_mode : DPAD_MODE_BUTTONS;
       return dpad_mode_names[idx];
     }
     case QCI_SOCD:
@@ -1254,6 +1271,7 @@ bool QuickConfigMenu::needsSubmenu(QuickConfigItem item) {
       return true;
     // These offer fewer values on some pads and outputs, and cycle there.
     case QCI_DPAD_BUTTONS:
+    case QCI_DPAD2_MODE:
     case QCI_STICK_INVERT:
     case QCI_MOUSE_SOURCE:
     case QCI_NSO_SPECIAL:

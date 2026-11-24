@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "controller_selection_state.h"
+#include "dreamcast_twin_stick.h"
 #include "eeprom_helper.h"
 #include "n64_assignment_runtime.h"
 #include "settings_store.h"
@@ -200,6 +201,12 @@ constexpr uint8_t kDreamcastRemapSlots[] = {
   REMAP_SLOT_A, REMAP_SLOT_B, REMAP_SLOT_X, REMAP_SLOT_Y,
   REMAP_SLOT_L2, REMAP_SLOT_R2, REMAP_SLOT_START REMAP_DPAD_ROWS
 };
+constexpr uint8_t kDreamcastTwinStickRemapSlots[] = {
+  REMAP_SLOT_A, REMAP_SLOT_B, REMAP_SLOT_X, REMAP_SLOT_Y,
+  REMAP_SLOT_L2, REMAP_SLOT_R2, REMAP_SLOT_START,
+  REMAP_SLOT_EXTRA0, REMAP_SLOT_EXTRA1, REMAP_SLOT_EXTRA2,
+  REMAP_SLOT_EXTRA3, REMAP_SLOT_EXTRA4 REMAP_DPAD_ROWS
+};
 #endif
 
 #ifdef ENABLE_INPUT_WII
@@ -332,6 +339,11 @@ const uint8_t* getRemapSlotTable(DeviceEnum mode, uint8_t* count) {
     #endif
     #ifdef ENABLE_INPUT_DREAMCAST
     case RZORD_DREAMCAST:
+      if (mode == deviceMode && selectedControllerFrame().connected &&
+          controllerFrameIsDreamcastTwinStick(selectedControllerFrame())) {
+        *count = sizeof(kDreamcastTwinStickRemapSlots) / sizeof(kDreamcastTwinStickRemapSlots[0]);
+        return kDreamcastTwinStickRemapSlots;
+      }
       *count = sizeof(kDreamcastRemapSlots) / sizeof(kDreamcastRemapSlots[0]);
       return kDreamcastRemapSlots;
     #endif
@@ -367,13 +379,34 @@ const char* remapDpadName(uint8_t slot) {
   return remapSlotIsDpad(slot) ? remap_button_names[slot] : nullptr;
 }
 
-uint8_t nextRemapTarget(DeviceEnum mode, uint8_t source, uint8_t current, bool forward) {
+uint8_t nextRemapTarget(DeviceEnum mode, outputMode_t output, uint8_t source,
+                        uint8_t current, bool forward) {
 #if defined(ADAPT_CAP_ARCADE_MAPPING_SESSION)
   // Cabinet rows step through actions, not the controller's own buttons.
   if (usb2db15ArcadeSessionReady()) {
     return usb2db15ArcadeNextBinding(source, current, forward);
   }
 #endif
+  if (mode == RZORD_DREAMCAST && deviceMode == mode &&
+      selectedControllerFrame().connected &&
+      controllerFrameIsDreamcastTwinStick(selectedControllerFrame())) {
+    const uint8_t outputCount = remapOutputFamily(output) == n64_assignment::Family::DInput
+        ? 19 : 14;
+    const uint8_t count = outputCount + (remapSlotIsDpad(source) ? 1 : 0);
+    int8_t index = forward ? -1 : 0;
+    for (uint8_t i = 0; i < count; ++i) {
+      const uint8_t candidate = i < outputCount ? i : source;
+      if (candidate == current) { index = i; break; }
+    }
+    for (uint8_t step = 0; step < count; ++step) {
+      index = forward ? (int8_t)((index + 1) % count)
+                      : (int8_t)((index + count - 1) % count);
+      const uint8_t candidate = index < outputCount ? (uint8_t)index : source;
+      if (remapValueAllowed(mode, source, candidate) &&
+          strcmp(remapOutputButtonName(output, candidate), "--") != 0) return candidate;
+    }
+    return current;
+  }
   const uint8_t count = getRemapButtonCount(mode);
   if (count == 0) return current;
   uint8_t display = getRemapButtonDisplayIndex(mode, current);
@@ -878,6 +911,11 @@ const char* getRemapButtonName(DeviceEnum mode, uint8_t index) {
         case 4: return "L";
         case 5: return "R";
         case 6: return "Sta";
+        case 7: return "D2 Up";
+        case 8: return "D2 Dn";
+        case 9: return "D2 Lt";
+        case 10: return "D2 Rt";
+        case 11: return "Pause(D)";
       }
       break;
     #endif

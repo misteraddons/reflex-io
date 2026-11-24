@@ -131,6 +131,9 @@ void QuickConfigMenu::cycleMainMenuItemNext() {
     case QCI_DPAD_BUTTONS:
       cycleTempDpadMode(true);
       break;
+    case QCI_DPAD2_MODE:
+      cycleTempDpad2Mode(true);
+      break;
 
     case QCI_STICK_INVERT:
       temp_stick_invert = (temp_stick_invert + 1) % (getStickInvertMax(temp_input_mode) + 1);
@@ -304,6 +307,9 @@ void QuickConfigMenu::cycleMainMenuItemPrev() {
     case QCI_DPAD_BUTTONS:
       cycleTempDpadMode(false);
       break;
+    case QCI_DPAD2_MODE:
+      cycleTempDpad2Mode(false);
+      break;
 
     case QCI_STICK_INVERT:
       temp_stick_invert = (temp_stick_invert == 0)
@@ -419,6 +425,9 @@ void QuickConfigMenu::cycleSettingValue() {
 
     case QCI_DPAD_BUTTONS:
       cycleTempDpadMode(true);
+      break;
+    case QCI_DPAD2_MODE:
+      cycleTempDpad2Mode(true);
       break;
 
     case QCI_WIN_OUTPUT:
@@ -553,6 +562,9 @@ void QuickConfigMenu::cycleSettingValueBack() {
 
     case QCI_DPAD_BUTTONS:
       cycleTempDpadMode(false);
+      break;
+    case QCI_DPAD2_MODE:
+      cycleTempDpad2Mode(false);
       break;
 
     case QCI_WIN_OUTPUT:

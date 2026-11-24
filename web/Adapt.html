@@ -3320,7 +3320,8 @@
         group.style.marginBottom = '0';
         const label = document.createElement('label');
         label.className = 'form-label';
-        label.textContent = entry.label;
+        label.textContent = entry.id === DEVICE_SETTING.dpad && isTwinStickController()
+          ? 'D-Pad 1' : entry.label;
         const select = document.createElement('select');
         select.className = 'select';
         select.style.width = '100%';
@@ -4234,7 +4235,9 @@
         case 'neogeo': return ['A', 'B', 'C', 'D', 'Select', 'Start'];
         case '3do': return ['A', 'B', 'C', 'L', 'R', 'P', 'X'];
         case 'jaguar': return ['A', 'B', 'C', '1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#', 'Option', 'Pause'];
-        case 'dreamcast': return ['A', 'B', 'X', 'Y', 'L', 'R', 'Start'];
+        case 'dreamcast': return isTwinStickController()
+          ? ['A', 'B', 'X', 'Y', 'L', 'R', 'Start', 'D2 Up', 'D2 Down', 'D2 Left', 'D2 Right', 'Pause (D)']
+          : ['A', 'B', 'X', 'Y', 'L', 'R', 'Start'];
         case 'jpc': return ['1', '2', 'Select', 'Run'];
         // Keypad keys 2/8/4/6 are the D-pad rows (remapDpadRowName).
         case 'intv': return ['Top', 'Left', 'Right', '1', '3', '5', '7', '9', 'Clear', '0', 'Enter'];
@@ -4274,13 +4277,19 @@
         case 'neogeo': return [0, 1, 2, 3, 11, 10];
         case '3do': return [0, 1, 2, 4, 5, 10, 11];
         case 'jaguar': return [0, 1, 2, 8, 14, 9, 6, 15, 7, 4, 3, 5, 17, 16, 18, 11, 10];
-        case 'dreamcast': return [0, 1, 2, 3, 6, 7, 10];
+        case 'dreamcast': return isTwinStickController()
+          ? [0, 1, 2, 3, 6, 7, 10, 16, 14, 17, 18, 15]
+          : [0, 1, 2, 3, 6, 7, 10];
         case 'jvs': return [2, 3, 5, 4, 0, 1, 7, 6, 8, 9, 10, 11, 12];
         default: {
           const names = getInputModeButtons(modeIndex);
           return names === GENERIC_REMAP_BUTTONS ? GENERIC_REMAP_SLOTS.slice() : names.map((_, index) => index);
         }
       }
+    }
+
+    function isTwinStickController() {
+      return String(currentControllerName || lastDeviceInfoControllerName || '').trim() === 'Twin-Stick';
     }
 
     const INPUT_BUTTON_MASKS = Object.freeze({
@@ -20284,6 +20293,7 @@ document.getElementById('authorize-serial').addEventListener('click', function (
 
 
     function remapRowIdentity(selectId) {
+      if (selectId === 'remap-twinstick-mode') return 27;
       const match = /^remap-(btn|dpad)-(\d+)$/.exec(selectId);
       const index = Number(match?.[2]);
       return match?.[1] === 'dpad' ? WEBHID_REMAP_BUTTON_COUNT + index : (remapSlotMap[index] ?? index);
@@ -20319,6 +20329,7 @@ document.getElementById('authorize-serial').addEventListener('click', function (
           await saveRemapSettings();
         });
         item.querySelector('.remap-assign-btn').addEventListener('click', () => startRemapAssign(select, name));
+        if (id === 'remap-twinstick-mode') item.querySelector('.remap-assign-btn').hidden = true;
         item.querySelector('.remap-reset-btn').addEventListener('click', async () => {
           cancelRemapAssign();
           select.value = String(remapRowIdentity(id));
@@ -20328,6 +20339,10 @@ document.getElementById('authorize-serial').addEventListener('click', function (
       };
       remapButtonNames.forEach((name, idx) => addRow(name, `remap-btn-${idx}`,
         inputModeKey(inputMode) === 'n64' ? n64RemapChoices(idx) : remapDestinationChoices()));
+      if (inputModeKey(inputMode) === 'dreamcast' && isTwinStickController()) {
+        addRow('D-Pad 2', 'remap-twinstick-mode',
+          [24, 25, 26, 27].map((value, mode) => ({value, name: ['DPad', 'Left Stick', 'Right Stick', 'Buttons'][mode]})));
+      }
       // A direction stays itself or becomes a button, never another direction.
       if (remapDpadSupported) {
         REMAP_DPAD_DIRECTIONS.forEach((name, d) =>
@@ -20416,6 +20431,8 @@ document.getElementById('authorize-serial').addEventListener('click', function (
         const sourceSlot = remapSlotMap[i] ?? i;
         if (select && parseInt(select.value) !== sourceSlot) activeCount++;
       }
+      const twinStickMode = document.getElementById('remap-twinstick-mode');
+      if (twinStickMode && Number(twinStickMode.value) !== 27) activeCount++;
       for (let d = 0; remapDpadSupported && d < REMAP_DPAD_DIRECTIONS.length; d++) {
         const select = document.getElementById(`remap-dpad-${d}`);
         if (select && parseInt(select.value) !== WEBHID_REMAP_BUTTON_COUNT + d) activeCount++;
@@ -20501,6 +20518,12 @@ document.getElementById('authorize-serial').addEventListener('click', function (
             select.value = targetSlot;
           }
         }
+        const twinStickMode = document.getElementById('remap-twinstick-mode');
+        if (twinStickMode) {
+          const storedMode = view[2 + 13];
+          const value = storedMode >= 24 && storedMode <= 27 ? storedMode : 27;
+          twinStickMode.value = String(value);
+        }
         (dpadValues || []).forEach((value, d) => {
           const select = document.getElementById(`remap-dpad-${d}`);
           if (!select) return;
@@ -20552,6 +20575,8 @@ document.getElementById('authorize-serial').addEventListener('click', function (
               : sourceSlot;
           report[2 + sourceSlot] = targetSlot;
         }
+        const twinStickMode = document.getElementById('remap-twinstick-mode');
+        if (twinStickMode) report[2 + 13] = Number(twinStickMode.value);
         if (remapDpadSupported) {
           report[WEBHID_REMAP_DPAD_OFFSET] = WEBHID_REMAP_DPAD_MARKER;
           REMAP_DPAD_DIRECTIONS.forEach((_, d) => {
@@ -20591,6 +20616,18 @@ document.getElementById('authorize-serial').addEventListener('click', function (
         const select = document.getElementById(`remap-btn-${i}`);
         if (select) {
           select.value = remapSlotMap[i] ?? i;  // Identity/Auto uses the physical source slot.
+        }
+      }
+      const twinStickMode = document.getElementById('remap-twinstick-mode');
+      if (twinStickMode) twinStickMode.value = '27';
+      if (isTwinStickController()) {
+        const family = outputFamily(actualOutputModeValue());
+        if (family === 'xbox' || family === 'xid') {
+          [[16, 4], [14, 5], [17, 8], [18, 9], [15, 11]].forEach(([source, target]) => {
+            const index = remapSlotMap.indexOf(source);
+            const select = index >= 0 ? document.getElementById(`remap-btn-${index}`) : null;
+            if (select) select.value = String(target);
+          });
         }
       }
       for (let d = 0; remapDpadSupported && d < REMAP_DPAD_DIRECTIONS.length; d++) {

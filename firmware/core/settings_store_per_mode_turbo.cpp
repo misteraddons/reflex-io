@@ -117,6 +117,9 @@ bool loadRemapsForMode(DeviceEnum mode) {
   } else {
     sanitizeRemapValuesForMode(mode, active_remaps);
   }
+#ifdef ENABLE_INPUT_DREAMCAST
+  (void)applyDreamcastTwinStickDefaults(mode, output, active_remaps);
+#endif
   const bool moveLegacy = concrete && !legacyIsIdentity &&
                           remapPairOutputResolved(configuredOutputMode) &&
                           remapPairWrite(mode, output, legacy);

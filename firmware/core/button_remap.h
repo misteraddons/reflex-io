@@ -12,6 +12,7 @@
 #include "controller_frame_state.h"
 #include "device_runtime_state.h"
 #include "controller_state.h"
+#include "dreamcast_twin_stick.h"
 #include "n64_button_assignment.h"
 #include "remap_table.h"
 #include "../output/output_mode.h"
@@ -79,6 +80,11 @@ inline bool isN64StoredAssignment(DeviceEnum mode, uint8_t slot, uint8_t value) 
 // combined bindings keep their own encodings.
 inline bool remapValueAllowed(DeviceEnum mode, uint8_t source, uint8_t value) {
   if (source >= REMAP_MAX_BUTTONS) return false;
+#ifdef ENABLE_INPUT_DREAMCAST
+  if (mode == RZORD_DREAMCAST && source == DREAMCAST_TWIN_STICK_MODE_SLOT &&
+      value >= DREAMCAST_TWIN_STICK_MODE_BASE &&
+      value < DREAMCAST_TWIN_STICK_MODE_BASE + 4) return true;
+#endif
   if (isN64StoredAssignment(mode, source, value)) return true;
 #if defined(ADAPT_CAP_ARCADE_MAPPING_SESSION)
   if ((usb2db15_bindings::allowedSources & (1u << source)) && usb2db15_bindings::isCombined(value)) return true;
@@ -88,9 +94,10 @@ inline bool remapValueAllowed(DeviceEnum mode, uint8_t source, uint8_t value) {
   if (remapSlotIsDpad(value)) return value == source;
   return true;
 }
-// The next allowed controller-to-controller target for a remap row, among the
-// input's own buttons (and, for a direction, itself).
-uint8_t nextRemapTarget(DeviceEnum mode, uint8_t source, uint8_t current, bool forward);
+// Selects a valid destination. Twin Stick destinations are output buttons,
+// independent of the input's physical source list.
+uint8_t nextRemapTarget(DeviceEnum mode, outputMode_t output, uint8_t source,
+                        uint8_t current, bool forward);
 // "Up", "Down", "Left", "Right" for a D-pad slot, else nullptr.
 const char* remapDpadName(uint8_t slot);
 

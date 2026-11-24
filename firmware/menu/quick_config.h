@@ -80,6 +80,7 @@ enum QuickConfigItem : uint8_t {
   QCI_DEADZONE,
   QCI_RANGE_TEST,
   QCI_DPAD_BUTTONS,
+  QCI_DPAD2_MODE,
   QCI_SOCD,
   QCI_STICK_INVERT,
   QCI_RUMBLETECH,
@@ -215,6 +216,7 @@ private:
   uint8_t temp_deadzone;
   socdMode_t temp_socd;
   uint8_t temp_dpad_mode;  // 0=DPad, 1=Left Stick, 2=Right Stick, 3=Buttons
+  uint8_t temp_dpad2_mode;
   uint8_t temp_stick_invert;
   uint8_t temp_snes_rumbletech;
   uint8_t temp_rumble;
@@ -355,7 +357,9 @@ private:
   bool hasRightStick(DeviceEnum mode);
   uint8_t getDpadModeMax(outputMode_t mode);
   bool isTempDpadModeAllowed(uint8_t mode);
+  bool isTempDpad2ModeAllowed(uint8_t mode);
   void cycleTempDpadMode(bool forward);
+  void cycleTempDpad2Mode(bool forward);
   void cyclePointerMouseSource(bool forward);
   uint8_t getStickInvertMax(DeviceEnum mode);
   uint8_t getTriggerModeMax(outputMode_t mode);

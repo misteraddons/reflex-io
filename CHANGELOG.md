@@ -4,6 +4,24 @@ User-facing changes to the Classic2USB firmware and its tools. Versions follow
 the scheme in the README's Versioning section. The release package's
 `release.md` repeats the section for its version.
 
+## Unreleased
+
+- Restore upstream global Hold Start/Guide behavior and Hotkeys On/Off;
+  remove Twin Stick-only timing restriction. Adjustable duration remains
+  on a separate branch.
+- Revert experimental HKT-7500 OLED artwork pending upstream source
+  publication. Existing OLED presentation is unchanged. Rebuild required.
+
+## 1.0.2
+
+### Inputs
+
+- Sega Dreamcast HKT-7500 Twin Stick support with separate D-pad routing and
+  remappable Pause (D). Twin Stick D-pad 2 directions map to XInput buttons
+  and DInput buttons 15–18 by default.
+- Hold Start retains upstream one-second Home/Guide behavior, controlled by
+  global Hotkeys On/Off. No HKT-7500-specific hold shortcut.
+
 ## 1.0.1
 
 ### Inputs

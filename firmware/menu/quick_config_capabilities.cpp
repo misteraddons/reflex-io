@@ -6,6 +6,7 @@
 #endif
 
 #include "menu_capabilities.h"
+#include "../core/dreamcast_twin_stick.h"
 #if defined(ADAPT_CAP_ARCADE_MAPPING_SESSION)
 #include "../features/usb2db15/usb2db15_arcade_mapping.h"
 #endif
@@ -308,6 +309,19 @@ bool QuickConfigMenu::isTempDpadModeAllowed(uint8_t mode) {
   }
 }
 
+bool QuickConfigMenu::isTempDpad2ModeAllowed(uint8_t mode) {
+  if (mode == DPAD_MODE_BUTTONS) {
+#ifdef ENABLE_INPUT_DREAMCAST
+    const controller_state_t& frame = selectedControllerFrame();
+    if (temp_input_mode == RZORD_DREAMCAST && isLiveInputSelection() &&
+        frame.connected && controllerFrameIsDreamcastTwinStick(frame)) {
+      return true;
+    }
+#endif
+  }
+  return isTempDpadModeAllowed(mode);
+}
+
 void QuickConfigMenu::cycleTempDpadMode(bool forward) {
   uint8_t value = temp_dpad_mode;
   for (uint8_t attempts = 0; attempts < 4; ++attempts) {
@@ -322,6 +336,19 @@ void QuickConfigMenu::cycleTempDpadMode(bool forward) {
     }
   }
   temp_dpad_mode = DPAD_MODE_DPAD;
+}
+
+void QuickConfigMenu::cycleTempDpad2Mode(bool forward) {
+  uint8_t value = temp_dpad2_mode;
+  for (uint8_t attempts = 0; attempts < 4; ++attempts) {
+    value = forward ? static_cast<uint8_t>((value + 1) % 4)
+                    : (value == 0 ? 3 : static_cast<uint8_t>(value - 1));
+    if (isTempDpad2ModeAllowed(value)) {
+      temp_dpad2_mode = value;
+      return;
+    }
+  }
+  temp_dpad2_mode = DPAD_MODE_BUTTONS;
 }
 
 uint8_t QuickConfigMenu::getStickInvertMax(DeviceEnum mode) {

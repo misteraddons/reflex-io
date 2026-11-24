@@ -1,4 +1,6 @@
 #pragma once
+#include "../../core/button_remap.h"
+#include "../../core/dreamcast_twin_stick.h"
 #if defined(ADAPT_CAP_DIRECTIONAL_HOTKEYS)
 #include "../output_directional_hotkeys.h"
 #endif
@@ -61,6 +63,32 @@ inline void apply_xinput_dpad_and_stick_modes(uint8_t port, const controller_sta
 
   if (stick_invert & 0x01) ly = -ly;
   if (stick_invert & 0x02) ry = -ry;
+#ifdef ENABLE_INPUT_DREAMCAST
+  if (deviceMode == RZORD_DREAMCAST && controllerFrameIsDreamcastTwinStick(frame)) {
+    const uint8_t mode = dreamcastTwinStickModeFromRemaps(active_remaps);
+    const DreamcastTwinStickDirections d2 = dreamcastTwinStickDpad2(frame);
+    if (mode == DPAD_MODE_DPAD) {
+      const bool includeDpad1 = effective_dpad_mode == DPAD_MODE_DPAD;
+      const bool up = (includeDpad1 && frame.PAD_U) || d2.up;
+      const bool down = (includeDpad1 && frame.PAD_D) || d2.down;
+      const bool left = (includeDpad1 && frame.PAD_L) || d2.left;
+      const bool right = (includeDpad1 && frame.PAD_R) || d2.right;
+      const uint8_t hat = dreamcastTwinStickHat(up, down, left, right);
+      report.dpad_up = hat == 0 || hat == 1 || hat == 7;
+      report.dpad_down = hat == 3 || hat == 4 || hat == 5;
+      report.dpad_left = hat == 5 || hat == 6 || hat == 7;
+      report.dpad_right = hat == 1 || hat == 2 || hat == 3;
+    } else if (mode == DPAD_MODE_LEFT_STICK) {
+      if (d2.left || d2.right) lx = dreamcastTwinStickAxis(d2.left, d2.right, 32767);
+      if (d2.up || d2.down) ly = dreamcastTwinStickAxis(d2.up, d2.down, 32767);
+      if (stick_invert & 0x01) ly = -ly;
+    } else if (mode == DPAD_MODE_RIGHT_STICK) {
+      if (d2.left || d2.right) rx = dreamcastTwinStickAxis(d2.left, d2.right, 32767);
+      if (d2.up || d2.down) ry = dreamcastTwinStickAxis(d2.up, d2.down, 32767);
+      if (stick_invert & 0x02) ry = -ry;
+    }
+  }
+#endif
 }
 
 inline void map_xinput_output_to_report(uint8_t port, xinput_report_t& report) {

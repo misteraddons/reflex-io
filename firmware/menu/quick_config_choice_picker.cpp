@@ -199,7 +199,7 @@ uint8_t QuickConfigMenu::fillRemapChoices() {
   if (usb2db15ArcadeSessionReady()) before_first = 0xFF;
 #endif
   return walkChoices(remaps[source], before_first, choice_values, kChoiceCapacity, [&] {
-    remaps[source] = nextRemapTarget(temp_input_mode, source, remaps[source], true);
+    remaps[source] = nextRemapTarget(temp_input_mode, output, source, remaps[source], true);
   });
 }
 
@@ -249,6 +249,11 @@ uint8_t QuickConfigMenu::fillChoiceValues(QuickConfigItem item, uint8_t* values)
         if (isTempDpadModeAllowed(mode)) add(mode);
       }
       break;
+    case QCI_DPAD2_MODE:
+      for (uint8_t mode = 0; mode < 4; ++mode) {
+        if (isTempDpad2ModeAllowed(mode)) add(mode);
+      }
+      break;
     case QCI_MOUSE_SOURCE:
       for (uint8_t source = 0; source < 4; ++source) {
         if (pointerSourceAvailable(source)) add(source);
@@ -294,6 +299,7 @@ uint8_t QuickConfigMenu::swapChoiceValue(uint8_t value) {
     case QCI_JOGCON_FORCE: return swapStaged(temp_jogcon_force, value);
     case QCI_NSO_SPECIAL: return swapStaged(temp_nso_special, value);
     case QCI_DPAD_BUTTONS: return swapStaged(temp_dpad_mode, value);
+    case QCI_DPAD2_MODE: return swapStaged(temp_dpad2_mode, value);
     case QCI_MOUSE_SOURCE: return swapStaged(temp_pointer_source, value);
 #ifdef ENABLE_INPUT_PSX
     case QCI_NEGCON_GAIN: return swapStaged(temp_negcon_gain, value);

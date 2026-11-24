@@ -4,7 +4,10 @@
 #include <string.h>
 
 #include "button_remap.h"
+#include "controller_selection_state.h"
+#include "dreamcast_twin_stick.h"
 #include "device_runtime_state.h"
+#include "../input/runtime/input_frame_runtime.h"
 #include "remap_pair_store.h"
 #include "settings_store.h"
 #include "../output/output_capabilities.h"
@@ -24,6 +27,31 @@ namespace {
 bool loadedValid = false;
 DeviceEnum loadedInput = RZORD_NONE;
 outputMode_t loadedOutput = OUTPUT_MISTER;
+bool loadedTwinStick = false;
+
+bool dreamcastTwinStickConnected() {
+  return deviceMode == RZORD_DREAMCAST &&
+         controllerFramesContainDreamcastTwinStick(controller_frames, inputPortCount());
+}
+
+bool setDreamcastTwinStickDefaults(uint8_t* remaps, outputMode_t selected) {
+  const bool uninitialized =
+      remaps[DREAMCAST_TWIN_STICK_MODE_SLOT] < DREAMCAST_TWIN_STICK_MODE_BASE ||
+      remaps[DREAMCAST_TWIN_STICK_MODE_SLOT] >= DREAMCAST_TWIN_STICK_MODE_BASE + 4;
+  if (!uninitialized) return false;
+
+  remaps[DREAMCAST_TWIN_STICK_MODE_SLOT] =
+      dreamcastTwinStickModeEncoding(DPAD_MODE_BUTTONS);
+  const outputMode_t output = remapPairOutputFor(selected);
+  if (output == OUTPUT_XINPUT || output == OUTPUT_XINPUTW || output == OUTPUT_XINPUT2P) {
+    remaps[16] = 4;   // D-Pad 2 Up -> LB
+    remaps[14] = 5;   // D-Pad 2 Down -> RB
+    remaps[17] = 8;   // D-Pad 2 Left -> LS
+    remaps[18] = 9;   // D-Pad 2 Right -> RS
+    remaps[15] = 11;  // Pause (D) -> Back
+  }
+  return true;
+}
 
 #if !ADAPT_REMAPS_PER_OUTPUT
 void writeRecordRemaps(DeviceEnum input, const uint8_t (&remaps)[REMAP_MAX_BUTTONS]) {
@@ -74,6 +102,20 @@ bool sanitizeRemapValuesForMode(DeviceEnum mode, uint8_t* remaps) {
   return changed;
 }
 
+bool applyDreamcastTwinStickDefaults(DeviceEnum input, outputMode_t selected,
+                                     uint8_t* remaps) {
+#ifdef ENABLE_INPUT_DREAMCAST
+  if (input == RZORD_DREAMCAST && dreamcastTwinStickConnected()) {
+    return setDreamcastTwinStickDefaults(remaps, selected);
+  }
+#else
+  (void)input;
+  (void)selected;
+  (void)remaps;
+#endif
+  return false;
+}
+
 void readRemapsForPair(DeviceEnum input, outputMode_t selected, uint8_t (&remaps)[REMAP_MAX_BUTTONS]) {
   for (uint8_t i = 0; i < REMAP_MAX_BUTTONS; ++i) remaps[i] = i;
   if (!isConcreteModeForPerSettings(input)) return;
@@ -84,6 +126,9 @@ void readRemapsForPair(DeviceEnum input, outputMode_t selected, uint8_t (&remaps
     remapPairRead(input, remapPairOutputFor(selected), remaps);
   } else {
     remapTableFromRecord(remaps, settings.remaps);
+  }
+  if (input == RZORD_DREAMCAST && dreamcastTwinStickConnected()) {
+    (void)setDreamcastTwinStickDefaults(remaps, selected);
   }
   sanitizeRemapValuesForMode(input, remaps);
 }
@@ -136,9 +181,11 @@ void noteActiveRemapPair(DeviceEnum input, outputMode_t output) {
   loadedValid = true;
   loadedInput = input;
   loadedOutput = output;
+  loadedTwinStick = dreamcastTwinStickConnected();
 }
 
 bool activeRemapPairIsStale(DeviceEnum input) {
   return loadedValid && loadedInput == input &&
-         loadedOutput != remapPairOutputFor(configuredOutputMode);
+         (loadedOutput != remapPairOutputFor(configuredOutputMode) ||
+          loadedTwinStick != dreamcastTwinStickConnected());
 }

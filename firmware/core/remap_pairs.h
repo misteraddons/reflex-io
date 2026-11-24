@@ -30,6 +30,8 @@ bool remapPairOutputResolved(outputMode_t selected);
 // Values outside the remap range become identity (N64 assignments and
 // USB2DB15 combined bindings are kept). True when anything changed.
 bool sanitizeRemapValuesForMode(DeviceEnum mode, uint8_t* remaps);
+bool applyDreamcastTwinStickDefaults(DeviceEnum input, outputMode_t selected,
+                                     uint8_t* remaps);
 
 // The input's unmoved legacy remaps if any (they are newer than any pair),
 // else the pair's stored remaps, else identity. Never writes.

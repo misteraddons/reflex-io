@@ -172,6 +172,7 @@ void QuickConfigMenu::loadTempQuickSettingsForMode(DeviceEnum mode) {
   uint8_t remaps[REMAP_MAX_BUTTONS];
   readRemapsForPair(mode, temp_output_mode, remaps);
   transaction.stage(remaps, calibrationFromQuickSettings(settings));
+  temp_dpad2_mode = dreamcastTwinStickModeFromRemaps(remaps);
   transaction_staged_mode = mode;
 #if defined(ADAPT_BRIDGE_CLASSIC_TO_USB)
   temp_mouse = rotaryMouseSettingsRead(mode);
@@ -183,6 +184,7 @@ void QuickConfigMenu::restageRemapsForOutput() {
   uint8_t remaps[REMAP_MAX_BUTTONS];
   readRemapsForPair(temp_input_mode, temp_output_mode, remaps);
   transaction.resetRemaps(remaps);
+  temp_dpad2_mode = dreamcastTwinStickModeFromRemaps(remaps);
 }
 
 bool QuickConfigMenu::saveStagedRemaps() {
@@ -244,6 +246,7 @@ void QuickConfigMenu::resetTempQuickSettingsToDefaults() {
   remapTableFromRecord(remaps, settings.remaps);
   transaction.resetToDefaults(remaps);
   transaction_staged_mode = temp_input_mode;
+  resetTempRemapsToDefaults();
   temp_mouse = RotaryMouseSettings{};
 #if defined(ADAPT_CAP_CONTROLLER_HOTKEY_PROFILES)
   memset(temp_direction_hotkeys, 0, sizeof(temp_direction_hotkeys));
@@ -255,6 +258,20 @@ void QuickConfigMenu::resetTempQuickSettingsToDefaults() {
 void QuickConfigMenu::resetTempRemapsToDefaults() {
   uint8_t remaps[REMAP_MAX_BUTTONS];
   remapTableFromRecord(remaps, buildDefaultQuickSettingsForMode(temp_input_mode).remaps);
+  if (temp_input_mode == RZORD_DREAMCAST && isLiveInputSelection() &&
+      controllerFrameIsDreamcastTwinStick(selectedControllerFrame())) {
+    remaps[DREAMCAST_TWIN_STICK_MODE_SLOT] =
+        dreamcastTwinStickModeEncoding(DPAD_MODE_BUTTONS);
+    if (remapPairOutputFor(temp_output_mode) == OUTPUT_XINPUT ||
+        remapPairOutputFor(temp_output_mode) == OUTPUT_XINPUT2P) {
+      remaps[16] = 4;
+      remaps[14] = 5;
+      remaps[17] = 8;
+      remaps[18] = 9;
+      remaps[15] = 11;
+    }
+    temp_dpad2_mode = DPAD_MODE_BUTTONS;
+  }
   transaction.resetRemaps(remaps);
 }
 
@@ -506,6 +523,11 @@ void QuickConfigMenu::applyAndClose() {
 #endif
   should_save = true;
   if (isLiveInputSelection() && transaction_staged_mode == deviceMode) {
+    if (temp_input_mode == RZORD_DREAMCAST &&
+        controllerFrameIsDreamcastTwinStick(selectedControllerFrame())) {
+      transaction.remaps()[DREAMCAST_TWIN_STICK_MODE_SLOT] =
+          dreamcastTwinStickModeEncoding(temp_dpad2_mode);
+    }
     transaction.commit(active_remaps, analogCalibration);
   }
   const uint8_t newWinOutput = (temp_win_output > HOST_OUTPUT_PREFERENCE_MAX) ? HOST_OUTPUT_PREFERENCE_DINPUT : temp_win_output;
